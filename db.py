@@ -124,6 +124,14 @@ class DB():
             [variant_name]
         )))
 
+    def is_mondo_condition_id(self, mondo_condition_id):
+        return bool(list(self.cursor.execute(
+            'SELECT 1 FROM mondo_clinvar_relationships WHERE mondo_id=? LIMIT 1',
+            [mondo_condition_id]
+        )))
+
+
+
     def max_date(self):
         return list(self.cursor.execute('SELECT MAX(date) FROM submissions'))[0][0]
 
@@ -288,6 +296,30 @@ class DB():
                 self.and_equals('normalized_gene_type', kwargs['gene_type'])
 
         return self.value()
+
+    def clinvar_names_from_mondo_id(self, mondo_id):
+        clinvar_names = []
+        try:
+            self.cursor.execute('SELECT clinvar_name FROM mondo_clinvar_relationships WHERE mondo_id=?',
+                                [mondo_id])
+            temp = self.cursor.fetchall()
+            for i, name in enumerate(temp):
+                clinvar_names.append(name[0])
+            return clinvar_names
+        except IndexError:
+            return None
+
+    @promise
+    def mondo_conditions(self, **kwargs):
+        return list(map(dict, self.cursor.execute(
+            'SELECT DISTINCT mondo_id, mondo_name FROM mondo_clinvar_relationships order by mondo_name')))
+
+    @promise
+    def mondo_name(self, mondo_id):
+        self.cursor.execute('SELECT mondo_name FROM mondo_clinvar_relationships where mondo_id=?',
+                            [mondo_id])
+        name = self.cursor.fetchone()[0]
+        return name
 
     @promise
     def total_significance_terms_over_time(self):
